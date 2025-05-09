@@ -13,9 +13,10 @@
  * - useState：React 的 Hook，用於在函數組件中管理狀態
  * - TaskList：我們自定義的任務列表組件
  */
-import Image from "next/image";
-import { useState } from "react";
+import Link from "next/link";
+import { useState, useEffect } from "react";
 import TaskList from "../components/TaskList";
+import { loadStaticPaths } from "next/dist/server/dev/static-paths-worker";
 
 /**
  * Home 組件 - 應用程序的主頁面組件
@@ -50,6 +51,15 @@ export default function Home() {
   const [tasks, setTasks] = useState([]); // 儲存所有任務
   const [newTask, setNewTesk] = useState(''); // 儲存用戶輸入的新任務
 
+  const [nextId, setNextId] = useState(1);
+
+  useEffect(() => {
+    const savedTasks = JSON.parse(localStorage.getItem('tasks')) || [];
+    setTasks(savedTasks);
+    const maxId = savedTasks.reduce((max, task) => Math.max(max, task.id), 0);
+    setNextId(maxId + 1);
+  }, []);
+
   /**
    * addTask 函數 - 處理添加新任務的邏輯
    * 
@@ -65,11 +75,27 @@ export default function Home() {
   const addTask = () => {
     console.log("Before" + tasks); // 顯示添加前的任務列表
     console.log("NewTask:", newTask); // 顯示要添加的新任務
-    const updatedTasks = [...tasks, newTask]; // 創建包含新任務的陣列
+
+    const newTaskObj = {
+      id: nextId,
+      title: newTask,
+      description: '',
+    };
+
+    const updatedTasks = [...tasks, newTaskObj]; // 創建包含新任務的陣列
     setTasks(updatedTasks); // 更新任務狀態
     console.log("After", updatedTasks); // 顯示添加後的任務列表
     setNewTesk(''); // 重置輸入框
+
+    setNextId(nextId + 1);
+    localStorage.setItem('tasks', JSON.stringify(updatedTasks));
   };
+
+  const handleDelete = (index) => {
+    const newTasks = tasks.filter((_, i) => i !== index);
+    setTasks(newTasks);
+    localStorage.setItem('tasks', JSON.stringify(newTasks));
+  }
 
   /**
    * 組件的渲染部分
@@ -83,7 +109,7 @@ export default function Home() {
   return (
     // main 元素包含整個應用界面
     // p-4：Tailwind CSS 類，表示 padding: 1rem（16px）
-    <main className="p-4">
+    <main className="p-4 max-w-md mx-auto">
       {/* 標題部分 */}
       <h1 className="text-2xl font-bold">Tesk Board</h1>
 
@@ -125,7 +151,7 @@ export default function Home() {
       - 將 tasks 陣列作為 props 傳遞給 TaskList 組件
       - TaskList 組件負責將任務陣列渲染為實際的列表
       */}
-      <TaskList tasks={tasks} />
+      <TaskList tasks={tasks} onDelete={handleDelete} />
     </main>
   );
 }
